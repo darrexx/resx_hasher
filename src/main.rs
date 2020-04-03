@@ -29,7 +29,7 @@ fn main() {
     let path = &args[1];
 
     let walker = WalkDir::new(path).into_iter();
-    let entrys = walker.filter_entry(|e| e.file_type().is_dir() || e.path().extension().unwrap() == "resx");
+    let entrys = walker.filter_entry(|e| (e.file_type().is_file() && e.path().extension().unwrap() == "resx") || e.file_name() != "hashed");
 
 
     for entry in entrys {
@@ -66,13 +66,6 @@ fn main() {
                     let mut start_data = WriterEvent::start_element(name.borrow());
                     
                     for attr in &attributes {
-                        // let attribute_name = &attr.name.prefix;
-                        // let mut attribute_name = match attribute_name {
-                        //     Some(e) => e,
-                        //     None => ""
-                        // };
-
-                        // attribute_name.to_string().push_str(attr.name.local_name.as_str());
                         let attr_name = Name{
                             local_name: attr.name.local_name.as_str(),
                             namespace: attr.name.namespace_ref(),
@@ -143,7 +136,7 @@ fn main() {
                         let digest = md5::compute(&localization_value);
                         let value = digest.0;
                         let value_as_string = hex::encode(&value);
-                        let mut md5 = "md5".to_string();
+                        let mut md5 = "md5:".to_string();
                         md5.push_str(value_as_string.as_str());
                         let comment_content = WriterEvent::characters(&md5);
                         writer.write(comment_content).unwrap();
@@ -168,7 +161,9 @@ fn main() {
                                 println!("{:?}", event);
                                 panic!("1234");
                             }
-                            Ok(_) => {println!("{:?}", event);}
+                            Ok(_) => {
+                                println!("{:?}", event);
+                            }
                         }
                     }
                 }
