@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 md5 = "0.7.0"
 xml-rs = "0.8.1"
+hex = "0.4.2"
+walkdir = "2.3.1"
