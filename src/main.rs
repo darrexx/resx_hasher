@@ -2,7 +2,6 @@ use xml::reader::{EventReader, XmlEvent as ReaderEvent};
 use xml::writer::{EmitterConfig, XmlEvent as WriterEvent, EventWriter};
 use xml::name::{Name, OwnedName};
 use xml::attribute::OwnedAttribute;
-use xml::namespace::Namespace;
 use hex::encode;
 use std::fs::File;
 use walkdir::{WalkDir, DirEntry};
@@ -10,7 +9,7 @@ use std::fs;
 use md5;
 use std::env;
 use std::io::BufReader;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 fn main() {
     let args : Vec<String> = env::args().collect();
