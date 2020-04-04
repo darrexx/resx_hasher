@@ -181,12 +181,12 @@ fn main() {
         writer.write(start_element).unwrap();
     }
 
-    fn create_and_write_md5_string(localization_value: &String, writer: &mut EventWriter<&mut File>) {
+    fn create_and_write_md5_string(localization_value: &str, writer: &mut EventWriter<&mut File>) {
         let md5_string = create_md5_string(localization_value);
         writer.write(WriterEvent::characters(&md5_string)).unwrap();
     }
 
-    fn create_md5_string(localization_value: &String) -> String {
+    fn create_md5_string(localization_value: &str) -> String {
         let digest = md5::compute(&localization_value);
         let value = digest.0;
         let value_as_string = encode(&value);
