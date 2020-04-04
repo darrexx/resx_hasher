@@ -16,8 +16,10 @@ fn main() {
     let path = &args[1];
 
     let walker = WalkDir::new(path).into_iter();
-    let entrys = walker.filter_entry(|e| (e.file_type().is_file() && e.path().extension().unwrap() == "resx") || e.file_name() != "hashed");
-
+    let entrys = walker.filter_entry(|e|
+           (e.file_type().is_file() && e.path().extension().unwrap() == "resx")
+        || (e.file_type().is_dir() && e.file_name() != "hashed")
+    );
 
     for entry in entrys {
         let entry = entry.unwrap();
