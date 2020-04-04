@@ -1,30 +1,15 @@
 use xml::reader::{EventReader, XmlEvent as ReaderEvent};
-use xml::writer::{EmitterConfig, EventWriter, XmlEvent as WriterEvent};
+use xml::writer::{EmitterConfig, XmlEvent as WriterEvent};
 use xml::name::Name;
 use hex::encode;
 use std::fs::{File};
-use walkdir::{DirEntry, WalkDir};
+use walkdir::WalkDir;
 use std::fs;
-use std::str::from_utf8;
-use std::path::Path;
 use md5;
 use std::env;
 use std::io::BufReader;
 
 fn main() {
-    let text = " <root>
-    <xsd:schema id=\"root\" xmlns=\"\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:msdata=\"urn:schemas-microsoft-com:xml-msdata\">\r\n    <xsd:import namespace=\"http://www.w3.org/XML/1998/namespace\" /> <xsd:element name=\"root\" msdata:IsDataSet=\"true\">\r\n      <xsd:complexType>\r\n        <xsd:choice maxOccurs=\"unbounded\">\r\n          <xsd:element name=\"metadata\">\r\n            <xsd:complexType>\r\n              <xsd:sequence>\r\n                <xsd:element name=\"value\" type=\"xsd:string\" minOccurs=\"0\" />\r\n              </xsd:sequence>\r\n              <xsd:attribute name=\"name\" use=\"required\" type=\"xsd:string\" />\r\n              <xsd:attribute name=\"type\" type=\"xsd:string\" />\r\n              <xsd:attribute name=\"mimetype\" type=\"xsd:string\" />\r\n              <xsd:attribute ref=\"xml:space\" />\r\n            </xsd:complexType>\r\n          </xsd:element>\r\n          <xsd:element name=\"assembly\">\r\n            <xsd:complexType>\r\n              <xsd:attribute name=\"alias\" type=\"xsd:string\" />\r\n              <xsd:attribute name=\"name\" type=\"xsd:string\" />\r\n            </xsd:complexType>\r\n          </xsd:element>\r\n          <xsd:element name=\"data\">\r\n            <xsd:complexType>\r\n              <xsd:sequence>\r\n                <xsd:element name=\"value\" type=\"xsd:string\" minOccurs=\"0\" msdata:Ordinal=\"1\" />\r\n                <xsd:element name=\"comment\" type=\"xsd:string\" minOccurs=\"0\" msdata:Ordinal=\"2\" />\r\n              </xsd:sequence>\r\n              <xsd:attribute name=\"name\" type=\"xsd:string\" use=\"required\" msdata:Ordinal=\"1\" />\r\n              <xsd:attribute name=\"type\" type=\"xsd:string\" msdata:Ordinal=\"3\" />\r\n              <xsd:attribute name=\"mimetype\" type=\"xsd:string\" msdata:Ordinal=\"4\" />\r\n              <xsd:attribute ref=\"xml:space\" />\r\n            </xsd:complexType>\r\n          </xsd:element>\r\n          <xsd:element name=\"resheader\"><xsd:complexType><xsd:sequence> <xsd:element name=\"value\" type=\"xsd:string\" minOccurs=\"0\" msdata:Ordinal=\"1\" />  </xsd:sequence>          <xsd:attribute name=\"name\" type=\"xsd:string\" use=\"required\" /></xsd:complexType></xsd:element>     </xsd:choice>   </xsd:complexType> </xsd:element>
-    </xsd:schema>
-    <data name=\"ProcessInfo123\" xml:space=\"preserve\">
-      <value>Process information:</value>
-      <comment>md5:fa690fed8c8ffde6eec7d4fe7cd5f2ba</comment>
-    </data>
-    <data name=\"ProcessInfo123\" xml:space=\"preserve\">
-      <value>Process inasdasdsstion:</value>
-      <comment>md5:fa690fed8c8ffde6eec7d4fe7cd5f2ba</comment>
-    </data>
-</root>";
-
     let args : Vec<String> = env::args().collect();
     let path = &args[1];
 
@@ -39,7 +24,9 @@ fn main() {
             continue;
         }
 
-        println!("{:?}", entry.file_name());
+        if cfg!(debug_assertions) {
+            println!("{:?}", entry.file_name());
+        }
         let file = File::open(entry.path()).unwrap();
         let file = BufReader::new(file);
         let reader = EventReader::new(file);
@@ -50,18 +37,19 @@ fn main() {
         fs::create_dir_all(&new_file_path).unwrap();
 
         new_file_path.push(entry.file_name());
-        println!("{:?}", new_file_path);
+        if cfg!(debug_assertions) {
+            println!("{:?}", new_file_path);
+        }
         let mut file = File::create(new_file_path).unwrap();
         let mut writer = EmitterConfig::new().perform_indent(true).create_writer(&mut file);
         let mut in_data =false;
         let mut in_comment = false;
         let mut in_value =false;
         let mut localization_value: String = "".to_string();
-        let empty_string = "".to_string();
 
         for e in reader {
             match e {
-                Ok(ReaderEvent::StartElement {name, attributes, namespace}) if name.local_name == "data" => {
+                Ok(ReaderEvent::StartElement {name, attributes, namespace: _}) if name.local_name == "data" => {
                     in_data = true;
                     let mut start_data = WriterEvent::start_element(name.borrow());
                     
@@ -76,38 +64,60 @@ fn main() {
                     }
     
                     writer.write(start_data).unwrap();
-                    println!("Start data");
+
+                    if cfg!(debug_assertions) {
+                        println!("Start data");
+                    }
                 }
-                Ok(ReaderEvent::StartElement {name, attributes, namespace}) if name.local_name == "value" => {
+                Ok(ReaderEvent::StartElement {name, attributes, namespace: _}) if name.local_name == "value" => {
                     if in_data{
                         in_value = true;
                     }
                     let mut start_value = WriterEvent::start_element(name.borrow());
                     for attr in &attributes {
-                        start_value = start_value.attr(name.local_name.as_str(), attr.value.as_str());
+                        let attr_name = Name{
+                            local_name: attr.name.local_name.as_str(),
+                            namespace: attr.name.namespace_ref(),
+                            prefix: attr.name.prefix_ref(),
+                        };
+
+                        start_value = start_value.attr(attr_name, attr.value.as_str());
                     }
     
                     writer.write(start_value).unwrap();
     
-                    println!("Start value");
+                    if cfg!(debug_assertions) {
+                        println!("Start value");
+                    }
                 }
-                Ok(ReaderEvent::StartElement {name, attributes, namespace}) if name.local_name == "comment" => {
-                  if in_data {
-                      in_comment = true;
-                  }
+                Ok(ReaderEvent::StartElement {name, attributes, namespace: _}) if name.local_name == "comment" => {
+                    if in_data {
+                        in_comment = true;
+                    }
     
-                  let mut start_comment = WriterEvent::start_element(name.borrow());
+                    let mut start_comment = WriterEvent::start_element(name.borrow());
+
                     for attr in &attributes {
-                        start_comment = start_comment.attr(name.local_name.as_str(), attr.value.as_str());
+                        let attr_name = Name{
+                            local_name: attr.name.local_name.as_str(),
+                            namespace: attr.name.namespace_ref(),
+                            prefix: attr.name.prefix_ref(),
+                        };
+
+                        start_comment = start_comment.attr(attr_name, attr.value.as_str());
                     }
     
                     writer.write(start_comment).unwrap();
-    
-                    println!("Start comment");
+                    
+                    if cfg!(debug_assertions) {
+                        println!("Start comment");
+                    }
                 }
                 Ok(ReaderEvent::Characters(text)) => {
                     
-                    println!("{:?}", text);
+                    if cfg!(debug_assertions) {
+                        println!("{:?}", text);
+                    }
                     if in_comment {
                         let digest = md5::compute(&localization_value);
                         let value = digest.0;
@@ -144,13 +154,19 @@ fn main() {
                         let comment_end = WriterEvent::end_element();
                         writer.write(comment_end).unwrap();
                         writer.write(WriterEvent::end_element()).unwrap();
-                        println!("End_Data");
+                        
+                        if cfg!(debug_assertions) {
+                            println!("End_Data");
+                        }
                     }
                     else{
                         in_comment = false;
                         in_data = false;
                         writer.write(WriterEvent::end_element()).unwrap();
-                        println!("End_{:?}", name.local_name);
+                        
+                        if cfg!(debug_assertions) {
+                            println!("End_{:?}", name.local_name);
+                        }
                     }
                 }
                 Ok(event) => {
@@ -159,10 +175,11 @@ fn main() {
                             Err(error) => {
                                 println!("{:?}", error);
                                 println!("{:?}", event);
-                                panic!("1234");
                             }
                             Ok(_) => {
-                                println!("{:?}", event);
+                                if cfg!(debug_assertions) {
+                                    println!("{:?}", event);
+                                }
                             }
                         }
                     }
